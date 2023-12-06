@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -32,29 +34,59 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *Server) configureRouter() {
 	s.router.HandleFunc("/ping", s.ping()).Methods("GET")
 	s.router.HandleFunc("/hello", s.hello()).Methods("GET")
-	// s.router.HandleFunc("/restart", s.restart()).Methods("GET")
-	// s.router.HandleFunc("/shutdown", s.shutdown()).Methods("GET")
+	s.router.HandleFunc("/restart", s.restart()).Methods("GET")
+	s.router.HandleFunc("/stop", s.stop()).Methods("GET")
 }
 
 func (s *Server) ping() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		s.respond(w, r, http.StatusOK, "OK")
+		if s.store.isStopping {
+			s.respond(w, http.StatusInternalServerError, "Stopping")
+			return
+		}
+		s.respond(w, http.StatusOK, "OK")
 	}
 }
 
 func (s *Server) hello() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		s.respond(w, r, http.StatusOK, "hello")
+		s.respond(w, http.StatusOK, "Hello")
 	}
 }
 
-func (s *Server) error(w http.ResponseWriter, r *http.Request, code int, err error) {
-	s.respond(w, r, code, map[string]string{"error": err.Error()})
+func (s *Server) stop() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.store.isStopping = true
+		s.respond(w, http.StatusOK, "Stopping")
+	}
 }
 
-func (s *Server) respond(w http.ResponseWriter, r *http.Request, code int, data interface{}) {
+func (s *Server) restart() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.store.isStopping = false
+		s.respond(w, http.StatusOK, "Restarting")
+	}
+}
+
+func (s *Server) error(w http.ResponseWriter, code int, err error) {
+	s.respondJson(w, code, map[string]string{"error": err.Error()})
+}
+
+func (s *Server) respondJson(w http.ResponseWriter, code int, data interface{}) {
 	w.WriteHeader(code)
-	// if data != nil {
-	// 	json.NewEncoder(w).Encode(data)
-	// }
+	if data != nil {
+		w.Header().Add("Content-Type", "application/json")
+		err := json.NewEncoder(w).Encode(data)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+func (s *Server) respond(w http.ResponseWriter, code int, data string) {
+	w.WriteHeader(code)
+	_, err := w.Write([]byte(data))
+	if err != nil {
+		log.Fatal(err)
+	}
 }
