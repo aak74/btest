@@ -17,6 +17,13 @@ type Server struct {
 	store  Store
 }
 
+const (
+	responseHello      = "Hello"
+	responseOK         = "OK"
+	responseRestarting = "Restarting"
+	responseStopping   = "Stopping"
+)
+
 func NewServer() *Server {
 	s := &Server{
 		router: mux.NewRouter(),
@@ -41,30 +48,30 @@ func (s *Server) configureRouter() {
 func (s *Server) ping() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.store.isStopping {
-			s.respond(w, http.StatusInternalServerError, "Stopping")
+			s.respond(w, http.StatusInternalServerError, responseStopping)
 			return
 		}
-		s.respond(w, http.StatusOK, "OK")
+		s.respond(w, http.StatusOK, responseOK)
 	}
 }
 
 func (s *Server) hello() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		s.respond(w, http.StatusOK, "Hello")
+		s.respond(w, http.StatusOK, responseHello)
 	}
 }
 
 func (s *Server) stop() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s.store.isStopping = true
-		s.respond(w, http.StatusOK, "Stopping")
+		s.respond(w, http.StatusOK, responseStopping)
 	}
 }
 
 func (s *Server) restart() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s.store.isStopping = false
-		s.respond(w, http.StatusOK, "Restarting")
+		s.respond(w, http.StatusOK, responseRestarting)
 	}
 }
 
