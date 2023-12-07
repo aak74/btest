@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -73,7 +72,6 @@ func getResult(srv *Server, req *http.Request) (int, string) {
 	}(result.Body)
 
 	var res, err = io.ReadAll(responseRecorder.Body)
-	fmt.Println(string(res))
 	if err != nil {
 		log.Fatal(err)
 	}

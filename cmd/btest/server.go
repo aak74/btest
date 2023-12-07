@@ -2,10 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/gorilla/mux"
 	"log"
 	"net/http"
-
-	"github.com/gorilla/mux"
+	"strconv"
 )
 
 type Store struct {
@@ -39,10 +39,19 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) configureRouter() {
+	s.router.Use(s.logRequest)
 	s.router.HandleFunc("/ping", s.ping()).Methods("GET")
 	s.router.HandleFunc("/hello", s.hello()).Methods("GET")
 	s.router.HandleFunc("/restart", s.restart()).Methods("GET")
 	s.router.HandleFunc("/stop", s.stop()).Methods("GET")
+}
+
+func (s *Server) logRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rw := &responseWriter{w, http.StatusOK}
+		next.ServeHTTP(rw, r)
+		log.Printf("%s %s %s\n", r.Method, r.RequestURI, strconv.Itoa(rw.code))
+	})
 }
 
 func (s *Server) ping() http.HandlerFunc {
