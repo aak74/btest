@@ -13,52 +13,56 @@ import (
 
 func TestPingHandler(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/ping", nil)
-	statusCode, body := getResultFromNewServer(req)
+	statusCode, body := getResult(nil, req)
 	assert.Equal(t, http.StatusOK, statusCode)
 	assert.Equal(t, "OK", body)
 }
 
 func TestHelloHandler(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/hello", nil)
-	statusCode, body := getResultFromNewServer(req)
+	statusCode, body := getResult(nil, req)
 	assert.Equal(t, http.StatusOK, statusCode)
 	assert.Equal(t, "Hello", body)
 }
 
 func TestStopHandler(t *testing.T) {
-	req, _ := http.NewRequest(http.MethodGet, "/stop", nil)
-	responseRecorder := httptest.NewRecorder()
-	srv := NewServer()
-	srv.ServeHTTP(responseRecorder, req)
+	var statusCode int
+	var body string
 
-	// Test first request. Expected
-	statusCode, body := getResult(responseRecorder)
+	srv := NewServer()
+
+	req, _ := http.NewRequest(http.MethodGet, "/stop", nil)
+	statusCode, body = getResult(srv, req)
 	assert.Equal(t, http.StatusOK, statusCode)
 	assert.Equal(t, "Stopping", body)
 
 	req, _ = http.NewRequest(http.MethodGet, "/ping", nil)
-	responseRecorder = httptest.NewRecorder()
-	srv.ServeHTTP(responseRecorder, req)
-	statusCode, body = getResult(responseRecorder)
+	statusCode, body = getResult(srv, req)
 	assert.Equal(t, http.StatusInternalServerError, statusCode)
 	assert.Equal(t, "Stopping", body)
 
 	req, _ = http.NewRequest(http.MethodGet, "/hello", nil)
-	responseRecorder = httptest.NewRecorder()
-	srv.ServeHTTP(responseRecorder, req)
-	statusCode, body = getResult(responseRecorder)
+	statusCode, body = getResult(srv, req)
 	assert.Equal(t, http.StatusOK, statusCode)
 	assert.Equal(t, "Hello", body)
+
+	req, _ = http.NewRequest(http.MethodGet, "/restart", nil)
+	statusCode, body = getResult(srv, req)
+	assert.Equal(t, http.StatusOK, statusCode)
+	assert.Equal(t, "Restarting", body)
+
+	req, _ = http.NewRequest(http.MethodGet, "/ping", nil)
+	statusCode, body = getResult(srv, req)
+	assert.Equal(t, http.StatusOK, statusCode)
+	assert.Equal(t, "OK", body)
 }
 
-func getResultFromNewServer(req *http.Request) (int, string) {
+func getResult(srv *Server, req *http.Request) (int, string) {
+	if srv == nil {
+		srv = NewServer()
+	}
 	responseRecorder := httptest.NewRecorder()
-	srv := NewServer()
 	srv.ServeHTTP(responseRecorder, req)
-	return getResult(responseRecorder)
-}
-
-func getResult(responseRecorder *httptest.ResponseRecorder) (int, string) {
 	result := responseRecorder.Result()
 
 	defer func(Body io.ReadCloser) {
